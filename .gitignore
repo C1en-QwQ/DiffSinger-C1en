@@ -3,3 +3,16 @@
 __pycache__/
 *.sh
 local_tools/
+*.ckpt
+*.pth
+(!/pipelines/assets)/*.wav
+infer_out/
+*.onnx
+data/
+checkpoints/
+venv/
+
+.vscode
+WPy64-38100
+Winpython64-3.8.10.0dot.exe
+.ipynb_checkpoints/

@@ -2,7 +2,7 @@ import re
 import six
 from six.moves import range  # pylint: disable=redefined-builtin
 
-PAD = "<pad>"
+PAD = "<PAD>"
 EOS = "<EOS>"
 UNK = "<UNK>"
 SEG = "|"
@@ -158,7 +158,6 @@ class TokenTextEncoder(TextEncoder):
     """Encoder based on a user-supplied vocabulary (file or list)."""
 
     def __init__(self,
-               vocab_filename,
                reverse=False,
                vocab_list=None,
                replace_oov=None,
@@ -171,8 +170,6 @@ class TokenTextEncoder(TextEncoder):
         - When saving vocab files, we save reserved tokens to the file.
 
         Args:
-            vocab_filename: If not None, the full filename to read vocab from. If this
-                is not None, then vocab_list should be None.
             reverse: Boolean indicating if tokens should be reversed during encoding
                 and decoding.
             vocab_list: If not None, a list of elements of the vocabulary. If this is
@@ -184,11 +181,8 @@ class TokenTextEncoder(TextEncoder):
         super(TokenTextEncoder, self).__init__(num_reserved_ids=num_reserved_ids)
         self._reverse = reverse
         self._replace_oov = replace_oov
-        if vocab_filename:
-            self._init_vocab_from_file(vocab_filename)
-        else:
-            assert vocab_list is not None
-            self._init_vocab_from_list(vocab_list)
+        assert vocab_list is not None
+        self._init_vocab_from_list(vocab_list)
         self.pad_index = self._token_to_id[PAD]
         self.eos_index = self._token_to_id[EOS]
         self.unk_index = self._token_to_id[UNK]
@@ -198,9 +192,6 @@ class TokenTextEncoder(TextEncoder):
         """Converts a space-separated string of tokens to a list of ids."""
         sentence = s
         tokens = sentence.strip().split()
-        if self._replace_oov is not None:
-            tokens = [t if t in self._token_to_id else self._replace_oov
-                        for t in tokens]
         ret = [self._token_to_id[tok] for tok in tokens]
         return ret[::-1] if self._reverse else ret
 
@@ -226,21 +217,6 @@ class TokenTextEncoder(TextEncoder):
 
     def _safe_id_to_token(self, idx):
         return self._id_to_token.get(idx, "ID_%d" % idx)
-
-    def _init_vocab_from_file(self, filename):
-        """Load vocab from a file.
-
-        Args:
-        filename: The file to load vocabulary from.
-        """
-        with open(filename) as f:
-            tokens = [token.strip() for token in f.readlines()]
-
-        def token_gen():
-            for token in tokens:
-                yield token
-
-        self._init_vocab(token_gen(), add_reserved_tokens=False)
 
     def _init_vocab_from_list(self, vocab_list):
         """Initialize tokens from a list of tokens.
@@ -287,7 +263,7 @@ class TokenTextEncoder(TextEncoder):
     def seg(self):
         return self.seg_index
 
-    def store_to_file(self, filename):
+    def store_to_file(self, filename, encoding:str="UTF-8"):
         """Write vocab file to disk.
 
         Vocab files have one token per line. The file ends in a newline. Reserved
@@ -296,7 +272,7 @@ class TokenTextEncoder(TextEncoder):
         Args:
         filename: Full path of the file to store the vocab to.
         """
-        with open(filename, "w") as f:
+        with open(filename, "w", encoding = encoding) as f:
             for i in range(len(self._id_to_token)):
                 f.write(self._id_to_token[i] + "\n")
 

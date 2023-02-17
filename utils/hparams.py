@@ -1,9 +1,14 @@
 import argparse
+import multiprocessing
 import os
+import re
+import shutil
+
 import yaml
 
 global_print_hparams = True
 hparams = {}
+is_main_process = not bool(re.match(r'Process-\d+', multiprocessing.current_process().name))
 
 
 class Args:
@@ -21,6 +26,13 @@ def override_config(old_config: dict, new_config: dict):
 
 
 def set_hparams(config='', exp_name='', hparams_str='', print_hparams=True, global_hparams=True):
+    """
+        Load hparams from multiple sources:
+        1. config chain (i.e. first load base_config, then load config);
+        2. if reset == True, load from the (auto-saved) complete config file ('config.yaml')
+           which contains all settings and do not rely on base_config;
+        3. load from argument --hparams or hparams_str, as temporary modification.
+    """
     if config == '':
         parser = argparse.ArgumentParser(description='neural music')
         parser.add_argument('--config', type=str, default='',
@@ -36,16 +48,17 @@ def set_hparams(config='', exp_name='', hparams_str='', print_hparams=True, glob
     else:
         args = Args(config=config, exp_name=exp_name, hparams=hparams_str,
                     infer=False, validate=False, reset=False, debug=False)
+
     args_work_dir = ''
     if args.exp_name != '':
         args.work_dir = args.exp_name
-        args_work_dir = f'checkpoints/{args.work_dir}'
+        args_work_dir = os.path.join('checkpoints', args.work_dir)
 
     config_chains = []
     loaded_config = set()
 
     def load_config(config_fn):  # deep first
-        with open(config_fn) as f:
+        with open(config_fn, encoding='utf-8') as f:
             hparams_ = yaml.safe_load(f)
         loaded_config.add(config_fn)
         if 'base_config' in hparams_:
@@ -65,23 +78,17 @@ def set_hparams(config='', exp_name='', hparams_str='', print_hparams=True, glob
         return ret_hparams
 
     global hparams
-    assert args.config != '' or args_work_dir != ''
+    assert args.config != '' or args_work_dir != '', 'Either config or exp name should be specified.'
     saved_hparams = {}
-    if args_work_dir != 'checkpoints/':
-        ckpt_config_path = f'{args_work_dir}/config.yaml'
-        if os.path.exists(ckpt_config_path):
-            try:
-                with open(ckpt_config_path) as f:
-                    saved_hparams.update(yaml.safe_load(f))
-            except:
-                pass
-        if args.config == '':
-            args.config = ckpt_config_path
+    ckpt_config_path = os.path.join(args_work_dir, 'config.yaml')
+    if args_work_dir != '' and os.path.exists(ckpt_config_path):
+        with open(ckpt_config_path, encoding='utf-8') as f:
+            saved_hparams.update(yaml.safe_load(f))
 
     hparams_ = {}
+    if args.config != '':
+        hparams_.update(load_config(args.config))
 
-    hparams_.update(load_config(args.config))
-    
     if not args.reset:
         hparams_.update(saved_hparams)
     hparams_['work_dir'] = args_work_dir
@@ -89,15 +96,37 @@ def set_hparams(config='', exp_name='', hparams_str='', print_hparams=True, glob
     if args.hparams != "":
         for new_hparam in args.hparams.split(","):
             k, v = new_hparam.split("=")
+            if k not in hparams_:
+                hparams_[k] = eval(v)
             if v in ['True', 'False'] or type(hparams_[k]) == bool:
                 hparams_[k] = eval(v)
             else:
                 hparams_[k] = type(hparams_[k])(v)
 
+    dictionary = hparams_.get('g2p_dictionary')
+    if dictionary is None:
+        dictionary = 'dictionaries/opencpop.txt'
+    ckpt_dictionary = os.path.join(hparams_['work_dir'], os.path.basename(dictionary))
     if args_work_dir != '' and (not os.path.exists(ckpt_config_path) or args.reset) and not args.infer:
         os.makedirs(hparams_['work_dir'], exist_ok=True)
-        with open(ckpt_config_path, 'w') as f:
-            yaml.safe_dump(hparams_, f)
+        if is_main_process:
+            # Only the main process will save the config file and dictionary
+            with open(ckpt_config_path, 'w', encoding='utf-8') as f:
+                hparams_non_recursive = hparams_.copy()
+                hparams_non_recursive['base_config'] = []
+                yaml.safe_dump(hparams_non_recursive, f, allow_unicode=True, encoding='utf-8')
+            if hparams_.get('reset_phone_dict') or not os.path.exists(ckpt_dictionary):
+                shutil.copy(dictionary, ckpt_dictionary)
+
+    ckpt_dictionary_exists = os.path.exists(ckpt_dictionary)
+    if not os.path.exists(dictionary) and not ckpt_dictionary_exists:
+        raise FileNotFoundError(f'G2P dictionary not found in either of the following paths:\n'
+                                f' - \'{dictionary}\'\n'
+                                f' - \'{ckpt_dictionary}\'')
+    hparams_['original_g2p_dictionary'] = dictionary
+    if ckpt_dictionary_exists:
+        dictionary = ckpt_dictionary
+    hparams_['g2p_dictionary'] = dictionary
 
     hparams_['infer'] = args.infer
     hparams_['debug'] = args.debug
@@ -107,7 +136,7 @@ def set_hparams(config='', exp_name='', hparams_str='', print_hparams=True, glob
         hparams.clear()
         hparams.update(hparams_)
 
-    if print_hparams and global_print_hparams and global_hparams:
+    if is_main_process and print_hparams and global_print_hparams and global_hparams:
         print('| Hparams chains: ', config_chains)
         print('| Hparams: ')
         for i, (k, v) in enumerate(sorted(hparams_.items())):

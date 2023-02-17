@@ -2,7 +2,7 @@
 [![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2105.02446)
 [![GitHub Stars](https://img.shields.io/github/stars/MoonInTheRiver/DiffSinger?style=social)](https://github.com/MoonInTheRiver/DiffSinger)
 [![downloads](https://img.shields.io/github/downloads/MoonInTheRiver/DiffSinger/total.svg)](https://github.com/MoonInTheRiver/DiffSinger/releases)
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-blue?label=SVSDemo)](https://huggingface.co/spaces/Silentlin/DiffSinger)
+ | [Interactive🤗 SVS](https://huggingface.co/spaces/Silentlin/DiffSinger)
 
 Substantial update: We 1) **abandon** the explicit prediction of the F0 curve; 2) increase the receptive field of the denoiser; 3) make the linguistic encoder more robust.
 **By doing so, 1) the synthesized recordings are more natural in terms of pitch; 2) the pipeline is simpler.**
@@ -24,7 +24,7 @@ b) Run the following scripts to pack the dataset for training/inference.
 
 ```sh
 export PYTHONPATH=.
-CUDA_VISIBLE_DEVICES=0 python data_gen/tts/bin/binarize.py --config usr/configs/midi/cascade/opencs/aux_rel.yaml
+CUDA_VISIBLE_DEVICES=0 python data_gen/binarize.py --config configs/midi/cascade/opencs/aux_rel.yaml
 
 # `data/binary/opencpop-midi-dp` will be generated.
 ```
@@ -60,14 +60,13 @@ export MY_DS_EXP_NAME=0228_opencpop_ds100_rel
 
 ### 2. Training Example
 ```sh
-CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config usr/configs/midi/e2e/opencpop/ds100_adj_rel.yaml --exp_name $MY_DS_EXP_NAME --reset  
+CUDA_VISIBLE_DEVICES=0 python run.py --config configs/midi/e2e/opencpop/ds100_adj_rel.yaml --exp_name $MY_DS_EXP_NAME --reset  
 ```
 
 ### 3. Inference from packed test set
 ```sh
-CUDA_VISIBLE_DEVICES=0 python tasks/run.py --config usr/configs/midi/e2e/opencpop/ds100_adj_rel.yaml --exp_name $MY_DS_EXP_NAME --reset --infer
+CUDA_VISIBLE_DEVICES=0 python run.py --config configs/midi/e2e/opencpop/ds100_adj_rel.yaml --exp_name $MY_DS_EXP_NAME --reset --infer
 ```
-Inference results will be saved in `./checkpoints/MY_DS_EXP_NAME/generated_` by default.
 
 We also provide:
  - the pre-trained model of DiffSinger;
@@ -78,7 +77,7 @@ Remember to put the pre-trained models in `checkpoints` directory.
 
 ### 4. Inference from raw inputs
 ```sh
-python inference/svs/ds_e2e.py --config usr/configs/midi/e2e/opencpop/ds100_adj_rel.yaml --exp_name $MY_DS_EXP_NAME
+python inference/ds_e2e.py --config configs/midi/e2e/opencpop/ds100_adj_rel.yaml --exp_name $MY_DS_EXP_NAME
 ```
 Raw inputs:
 ```
@@ -98,9 +97,11 @@ inp = {
         'input_type': 'phoneme'
     }  # input like Opencpop dataset.
 ```
-Here the inference results will be saved in `./infer_out` by default.
+
 ### 5. Some issues.
 a) the HifiGAN-Singing is trained on our [vocoder dataset](https://dl.acm.org/doi/abs/10.1145/3474085.3475437) and the training set of [PopCS](https://arxiv.org/abs/2105.02446). Opencpop is the out-of-domain dataset (unseen speaker). This may cause the deterioration of audio quality, and we are considering fine-tuning this vocoder on the training set of Opencpop.
 
 b) in this version of codes, we used the melody frontend ([lyric + MIDI]->[ph_dur]) to predict phoneme duration. F0 curve is implicitly predicted together with mel-spectrogram.
 
+c) example [generated audio](https://github.com/MoonInTheRiver/DiffSinger/blob/master/resources/demos_0221/DS/).
+More generated audio demos can be found in [DiffSinger](https://github.com/MoonInTheRiver/DiffSinger/releases/download/pretrain-model/0228_opencpop_ds100_rel.zip).

@@ -1,13 +1,59 @@
+# 此分支是对OpenVPI版本的优化
+
+支持OpenVPI-refactor版本的声码器,权重等
+
+## 启动!
+
+### 0. 安装
+
+```bash
+# 先装个PyTorch (1.8.2 LTS recommended)
+# 看下这里的注意事项: https://pytorch.org/get-started/locally/
+# 以下是CUDA 11.1的示例
+pip3 install torch==1.8.2 torchvision==0.9.2 torchaudio==0.8.2 --extra-index-url https://download.pytorch.org/whl/lts/1.8/cu111
+
+# Install other requirements
+pip install -r requirements.txt
+```
+
+### 1. 预处理
+
+```sh
+export PYTHONPATH=.
+CUDA_VISIBLE_DEVICES=0 python data_gen/binarize.py --config configs/acoustic/nomidi.yaml
+```
+### 2. 训练
+
+```sh
+CUDA_VISIBLE_DEVICES=0 python run.py --config configs/acoustic/nomidi.yaml --exp_name $MY_DS_EXP_NAME --reset  
+```
+### 3.推理
+
+```sh
+CUDA_VISIBLE_DEVICES=0 python run.py --exp_name $MY_DS_EXP_NAME --infer
+```
+
+
 # DiffSinger: Singing Voice Synthesis via Shallow Diffusion Mechanism
 [![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2105.02446)
 [![GitHub Stars](https://img.shields.io/github/stars/MoonInTheRiver/DiffSinger?style=social)](https://github.com/MoonInTheRiver/DiffSinger)
 [![downloads](https://img.shields.io/github/downloads/MoonInTheRiver/DiffSinger/total.svg)](https://github.com/MoonInTheRiver/DiffSinger/releases)
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-blue?label=TTSDemo)](https://huggingface.co/spaces/NATSpeech/DiffSpeech) 
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-blue?label=SVSDemo)](https://huggingface.co/spaces/Silentlin/DiffSinger)
+ | [Interactive🤗 TTS](https://huggingface.co/spaces/NATSpeech/DiffSpeech)
+ | [Interactive🤗 SVS](https://huggingface.co/spaces/Silentlin/DiffSinger)
 
 
 This repository is the official PyTorch implementation of our AAAI-2022 [paper](https://arxiv.org/abs/2105.02446), in which we propose DiffSinger (for Singing-Voice-Synthesis) and DiffSpeech (for Text-to-Speech).
- 
+
+<table style="width:100%">
+  <tr>
+    <th>DiffSinger/DiffSpeech at training</th>
+    <th>DiffSinger/DiffSpeech at inference</th>
+  </tr>
+  <tr>
+    <td><img src="docs/resources/model_a.png" alt="Training" height="300"></td>
+    <td><img src="docs/resources/model_b.png" alt="Inference" height="300"></td>
+  </tr>
+</table>
 
 :tada: :tada: :tada: **Updates**:
  - Sep.11, 2022: :electric_plug: [DiffSinger-PN](docs/README-SVS-opencpop-pndm.md). Add plug-in [PNDM](https://arxiv.org/abs/2202.09778), ICLR 2022 in our laboratory, to accelerate DiffSinger freely.
@@ -18,7 +64,7 @@ This repository is the official PyTorch implementation of our AAAI-2022 [paper](
  - Jan.29, 2022: support MIDI-A-version SVS.
  - Jan.13, 2022: support SVS, release PopCS dataset.
  - Dec.19, 2021: support TTS. [HuggingFace🤗 TTS](https://huggingface.co/spaces/NATSpeech/DiffSpeech)
- 
+
 :rocket: **News**: 
  - Feb.24, 2022: Our new work, NeuralSVB was accepted by ACL-2022 [![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2202.13277). [Demo Page](https://neuralsvb.github.io).
  - Dec.01, 2021: DiffSinger was accepted by AAAI-2022.
@@ -26,40 +72,16 @@ This repository is the official PyTorch implementation of our AAAI-2022 [paper](
  - May.06, 2021: We submitted DiffSinger to Arxiv [![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2105.02446).
 
 ## Environments
-1. If you want to use env of anaconda:
-    ```sh
-    conda create -n your_env_name python=3.8
-    source activate your_env_name 
-    pip install -r requirements_2080.txt   (GPU 2080Ti, CUDA 10.2)
-    or pip install -r requirements_3090.txt   (GPU 3090, CUDA 11.4)
-    ```
-
-2. Or, if you want to use virtual env of python:
-    ```sh
-    ## Install Python 3.8 first. 
-    python -m venv venv
-    source venv/bin/activate
-    # install requirements.
-    pip install -U pip
-    pip install Cython numpy==1.19.1
-    pip install torch==1.9.0
-    pip install -r requirements.txt
-    ```
+```sh
+conda create -n your_env_name python=3.8
+source activate your_env_name 
+pip install -r requirements_2080.txt   (GPU 2080Ti, CUDA 10.2)
+or pip install -r requirements_3090.txt   (GPU 3090, CUDA 11.4)
+```
 
 ## Documents
 - [Run DiffSpeech (TTS version)](docs/README-TTS.md).
 - [Run DiffSinger (SVS version)](docs/README-SVS.md).
-
-## Overview
-| Mel Pipeline                                                                                | Dataset                                                  | Pitch Input       | F0 Prediction |   Acceleration Method       | Vocoder                       |
-| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------| ----------------- | ------------- | --------------------------- | ----------------------------- |
-| [DiffSpeech (Text->F0, Text+F0->Mel, Mel->Wav)](docs/README-TTS.md)                         | [Ljspeech](https://keithito.com/LJ-Speech-Dataset/)      | None              | Explicit      | Shallow Diffusion           | NSF-HiFiGAN                   |
-| [DiffSinger (Lyric+F0->Mel, Mel->Wav)](docs/README-SVS-popcs.md)                            | [PopCS](https://github.com/MoonInTheRiver/DiffSinger)    | Ground-Truth F0   | None          | Shallow Diffusion           | NSF-HiFiGAN                   |
-| [DiffSinger (Lyric+MIDI->F0, Lyric+F0->Mel, Mel->Wav)](docs/README-SVS-opencpop-cascade.md) | [OpenCpop](https://wenet.org.cn/opencpop/)               | MIDI              | Explicit      | Shallow Diffusion           | NSF-HiFiGAN                   |
-| [FFT-Singer (Lyric+MIDI->F0, Lyric+F0->Mel, Mel->Wav)](docs/README-SVS-opencpop-cascade.md) | [OpenCpop](https://wenet.org.cn/opencpop/)               | MIDI              | Explicit      | Invalid                     | NSF-HiFiGAN                   |
-| [DiffSinger (Lyric+MIDI->Mel, Mel->Wav)](docs/README-SVS-opencpop-e2e.md)                   | [OpenCpop](https://wenet.org.cn/opencpop/)               | MIDI              | Implicit      | None                        | Pitch-Extractor + NSF-HiFiGAN |
-| [DiffSinger+PNDM (Lyric+MIDI->Mel, Mel->Wav)](docs/README-SVS-opencpop-pndm.md)             | [OpenCpop](https://wenet.org.cn/opencpop/)               | MIDI              | Implicit      | PLMS                        | Pitch-Extractor + NSF-HiFiGAN |
- 
 
 ## Tensorboard
 ```sh
@@ -67,9 +89,18 @@ tensorboard --logdir_spec exp_name
 ```
 <table style="width:100%">
   <tr>
-    <td><img src="resources/tfb.png" alt="Tensorboard" height="250"></td>
+    <td><img src="docs/resources/tfb.png" alt="Tensorboard" height="250"></td>
   </tr>
 </table>
+
+## Audio Demos
+Old audio samples can be found in our [demo page](https://diffsinger.github.io/). Audio samples generated by this repository are listed here:
+
+### TTS audio samples
+Speech samples (test set of LJSpeech) can be found in [demos_1213](https://github.com/MoonInTheRiver/DiffSinger/blob/master/resources/demos_1213). 
+
+### SVS audio samples
+Singing samples (test set of PopCS) can be found in [demos_0112](https://github.com/MoonInTheRiver/DiffSinger/blob/master/resources/demos_0112).
 
 ## Citation
     @article{liu2021diffsinger,
@@ -81,16 +112,12 @@ tensorboard --logdir_spec exp_name
 
 
 ## Acknowledgements
-* lucidrains' [denoising-diffusion-pytorch](https://github.com/lucidrains/denoising-diffusion-pytorch)
-* Official [PyTorch Lightning](https://github.com/PyTorchLightning/pytorch-lightning)
-* kan-bayashi's [ParallelWaveGAN](https://github.com/kan-bayashi/ParallelWaveGAN)
-* jik876's [HifiGAN](https://github.com/jik876/hifi-gan)
-* Official [espnet](https://github.com/espnet/espnet)
-* lmnt-com's [DiffWave](https://github.com/lmnt-com/diffwave)
-* keonlee9420's [Implementation](https://github.com/keonlee9420/DiffSinger). 
+Our codes are based on the following repos:
+* [denoising-diffusion-pytorch](https://github.com/lucidrains/denoising-diffusion-pytorch)
+* [PyTorch Lightning](https://github.com/PyTorchLightning/pytorch-lightning)
+* [ParallelWaveGAN](https://github.com/kan-bayashi/ParallelWaveGAN)
+* [HifiGAN](https://github.com/jik876/hifi-gan)
+* [espnet](https://github.com/espnet/espnet)
+* [DiffWave](https://github.com/lmnt-com/diffwave)
 
-Especially thanks to:
-
-* Team Openvpi's maintenance: [DiffSinger](https://github.com/openvpi/DiffSinger).
-* Your re-creation and sharing.
-    
+Also thanks [Keon Lee](https://github.com/keonlee9420/DiffSinger) for fast implementation of our work.
